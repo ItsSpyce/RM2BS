@@ -45,6 +45,18 @@ public class JSlotBodyMorphKey
   public required decimal Value { get; set; }
 }
 
+public class JsonMorphs
+{
+  [JsonPropertyName("morphs")]
+  public required Dictionary<string, JsonMorph> Morphs { get; set; } = [];
+}
+
+public class JsonMorph
+{
+  [JsonPropertyName("value")]
+  public required decimal Value { get; set; }
+}
+
 [Serializable]
 [XmlRoot("SliderPresets")]
 public class RaceMenuSliderPresets
@@ -104,6 +116,16 @@ class Program
     return JsonSerializer.DeserializeAsync<JSlotObject>(File.OpenRead(fullPath));
   }
 
+  public static ValueTask<JsonMorphs?> ReadJsonMorphs(string filename)
+  {
+    var fullPath = Path.Join(Directory.GetCurrentDirectory(), filename);
+    if (!File.Exists(fullPath))
+    {
+      return ValueTask.FromResult<JsonMorphs?>(null);
+    }
+    return JsonSerializer.DeserializeAsync<JsonMorphs>(File.OpenRead(fullPath));
+  }
+
   public static async Task<int> Main()
   {
     var inputDir = Path.Join("SKSE", "Plugins", "CharGen", "Presets");
@@ -115,26 +137,26 @@ class Program
     var serializer = new XmlSerializer(typeof(RaceMenuSliderPresets));
     try
     {
-      foreach (var file in Directory.EnumerateFiles("SKSE/Plugins/CharGen/Presets", "*.jslot"))
-    {
-      var filenameWithoutExt = Path.GetFileNameWithoutExtension(file);
-      var outputXml = Path.Join(outputDir, $"{filenameWithoutExt}.xml");
-      if (File.Exists(outputXml))
+      foreach (var file in Directory.EnumerateFiles(inputDir, "*.jslot"))
       {
-        Console.WriteLine($"Found preset for {filenameWithoutExt}, skipping");
-        continue;
-      }
-      var jslotData = await ReadJSlotFile(file);
-      if (jslotData is null)
-      {
-        Console.WriteLine($"Invalid data found at {filenameWithoutExt}, skipping");
-        continue;
-      }
-      var raceMenuSliderPresets = new RaceMenuSliderPresets
-      {
-        Presets =
-        [
-          new()
+        var filenameWithoutExt = Path.GetFileNameWithoutExtension(file);
+        var outputXml = Path.Join(outputDir, $"{filenameWithoutExt}.xml");
+        if (File.Exists(outputXml))
+        {
+          Console.WriteLine($"Found preset for {filenameWithoutExt}, skipping");
+          continue;
+        }
+        var jslotData = await ReadJSlotFile(file);
+        if (jslotData is null)
+        {
+          Console.WriteLine($"Invalid data found at {filenameWithoutExt}, skipping");
+          continue;
+        }
+        var raceMenuSliderPresets = new RaceMenuSliderPresets
+        {
+          Presets =
+          [
+            new()
           {
             Name = $"RaceMenu - {filenameWithoutExt}",
             Set = "RaceMenu",
@@ -162,14 +184,66 @@ class Program
               return acc;
             })]
           }
-        ]
-      };
+          ]
+        };
 
-      // write to output
-      using var xmlWriter = File.OpenWrite(outputXml);
-      serializer.Serialize(xmlWriter, raceMenuSliderPresets);
-      Console.WriteLine($"Created preset {outputXml}");
-    }
+        // write to output
+        using var xmlWriter = File.OpenWrite(outputXml);
+        serializer.Serialize(xmlWriter, raceMenuSliderPresets);
+        Console.WriteLine($"Created preset {outputXml}");
+      }
+
+      foreach (var file in Directory.EnumerateFiles(inputDir, "*.json"))
+      {
+        var filenameWithoutExt = Path.GetFileNameWithoutExtension(file);
+        var outputXml = Path.Join(outputDir, $"{filenameWithoutExt}.xml");
+        if (File.Exists(outputXml))
+        {
+          Console.WriteLine($"Found preset for {filenameWithoutExt}, skipping");
+          continue;
+        }
+        var jsonMorphs = await ReadJsonMorphs(file);
+        if (jsonMorphs is null)
+        {
+          Console.WriteLine($"Invalid data found at {filenameWithoutExt}, skipping");
+          continue;
+        }
+        var raceMenuSliderPresets = new RaceMenuSliderPresets
+        {
+          Presets =
+          [
+            new()
+          {
+            Name = $"RaceMenu - {filenameWithoutExt}",
+            Set = "RaceMenu",
+            Groups =
+            [
+              new() { Name = "3BA" },
+              new() { Name = "3BBB" },
+              new() { Name = "BHUNP 3BBB" },
+              new() { Name = "CBBE bodies" },
+              new() { Name = "COCO CBBE 3BBB" },
+              new() { Name = "COCO UUNP 3BBB" },
+            ],
+            Sliders = [.. (jsonMorphs.Morphs ?? []).Aggregate(new List<RaceMenuSliderPresetSlider>(), (acc, kvp) =>
+            {
+              var (name, morph) = kvp;
+              acc.AddRange(
+              [
+                new() { Name = name, Size = SizeSmall, Value = morph.Value * 100 },
+                new() { Name = name, Size = SizeBig, Value = morph.Value * 100 },
+              ]);
+              return acc;
+            })]
+          }
+          ]
+        };
+
+        // write to output
+        using var xmlWriter = File.OpenWrite(outputXml);
+        serializer.Serialize(xmlWriter, raceMenuSliderPresets);
+        Console.WriteLine($"Created preset {outputXml}");
+      }
     }
     catch (Exception ex)
     {
