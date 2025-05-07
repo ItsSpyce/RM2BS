@@ -174,13 +174,12 @@ class Program
     catch (Exception ex)
     {
       Console.WriteLine($"Error: {ex.Message}");
-      return 1;
-    }
-    finally
-    {
       Console.WriteLine("Press any key to continue...");
       Console.ReadKey();
+      return 1;
     }
+    Console.WriteLine("Press any key to continue...");
+    Console.ReadKey();
     return 0;
   }
 }
