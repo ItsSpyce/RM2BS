@@ -12,7 +12,7 @@ public class JSlotObject
   public JSlotActorInfo? ActorInfo { get; set; }
 
   [JsonPropertyName("bodyMorphs")]
-  public required JSlotBodyMorph[] BodyMorphs { get; set; }
+  public JSlotBodyMorph[]? BodyMorphs { get; set; }
 }
 
 public class JSlotActorInfo
@@ -113,7 +113,9 @@ class Program
       Directory.CreateDirectory(outputDir);
     }
     var serializer = new XmlSerializer(typeof(RaceMenuSliderPresets));
-    foreach (var file in Directory.EnumerateFiles("SKSE/Plugins/CharGen/Presets", "*.jslot"))
+    try
+    {
+      foreach (var file in Directory.EnumerateFiles("SKSE/Plugins/CharGen/Presets", "*.jslot"))
     {
       var filenameWithoutExt = Path.GetFileNameWithoutExtension(file);
       var outputXml = Path.Join(outputDir, $"{filenameWithoutExt}.xml");
@@ -145,7 +147,7 @@ class Program
               new() { Name = "COCO CBBE 3BBB" },
               new() { Name = "COCO UUNP 3BBB" },
             ],
-            Sliders = [.. jslotData.BodyMorphs.Aggregate(new List<RaceMenuSliderPresetSlider>(), (acc, morph) =>
+            Sliders = [.. (jslotData.BodyMorphs ?? []).Aggregate(new List<RaceMenuSliderPresetSlider>(), (acc, morph) =>
             {
               var key = morph.Keys.FirstOrDefault();
               if (key is null or not { Key: "RaceMenuMorphsCBBE.esp" })
@@ -168,7 +170,17 @@ class Program
       serializer.Serialize(xmlWriter, raceMenuSliderPresets);
       Console.WriteLine($"Created preset {outputXml}");
     }
-
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine($"Error: {ex.Message}");
+      return 1;
+    }
+    finally
+    {
+      Console.WriteLine("Press any key to continue...");
+      Console.ReadKey();
+    }
     return 0;
   }
 }
