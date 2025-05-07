@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RM2BS": {
+      "commandName": "Project",
+      "workingDirectory": "D:\\Wabbajack\\Somnium Backup\\files\\overwrite"
+    }
+  }
+}
